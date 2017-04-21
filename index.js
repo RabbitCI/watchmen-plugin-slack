@@ -2,21 +2,33 @@
 'use strict';
 
 var format = require('util').format;
+var _ = require('lodash');
 var merge = require('merge');
 var Slack = require('node-slack');
 require('dotenv').load({ silent: true });
 
 var slack = new Slack(process.env.WATCHMEN_SLACK_NOTIFICATION_URL);
+
 var defaultOptions = {
   channel: '#general',
   username: 'Watchmen',
   icon_emoji: ':mega:'
 };
 
-console.log( 'process.env.WATCHMEN_SLACK_NOTIFICATION_EVENTS', process.env.WATCHMEN_SLACK_NOTIFICATION_EVENTS );
-var notifications = process.env.WATCHMEN_SLACK_NOTIFICATION_EVENTS.split(' ');
-console.log('Slack notifications are turned on for:');
-console.log(notifications);
+var notifications;
+
+if( _.get( process, 'env.WATCHMEN_SLACK_NOTIFICATION_EVENTS' ) ) {
+  console.log( 'process.env.WATCHMEN_SLACK_NOTIFICATION_EVENTS', process.env.WATCHMEN_SLACK_NOTIFICATION_EVENTS );
+
+  notifications = _.get( process, 'env.WATCHMEN_SLACK_NOTIFICATION_EVENTS', '' ).split(' ');
+
+  if( notifications ) {
+    console.log('Slack notifications are turned on for:');
+    console.log(notifications);
+  }
+} else {
+  notifications = [];
+}
 
 if ('WATCHMEN_SLACK_NOTIFICATION_CHANNEL' in process.env) {
   defaultOptions.channel = process.env.WATCHMEN_SLACK_NOTIFICATION_CHANNEL;
@@ -36,6 +48,8 @@ function handleEvent(eventName) {
       return;
     }
 
+    var attachments = [];
+
     var friendlyNames = {
       'latency-warning': 'Latency Warning',
       'new-outage':      'New Outage',
@@ -45,15 +59,31 @@ function handleEvent(eventName) {
       'service-ok':      'Service OK'
     };
 
-    var text    = ['[' + friendlyNames[eventName] + '] on ' + service.name + ' ' + service.url + ''];
+    var text  = ['[' + friendlyNames[eventName] + '] on ' + service.name + ''];
 
-    if( [ 'new-outage', 'service-error', 'latency-warning' ].indexOf( eventName ) !== -1 ) {
-      text.push( format( 'See report [%s/services/%s/view].', process.env.WATCHMEN_BASE_URL, service.id ) );
+    if( _.get( process, 'env.WATCHMEN_BASE_URL' )  && [ 'current-outage', 'new-outage', 'service-error', 'latency-warning' ].indexOf( eventName ) !== -1 ) {
+
+      attachments.push({
+        "fallback": format( 'See report [%s/services/%s/view].', process.env.WATCHMEN_BASE_URL, service.id ),
+        "color": "#d9534f",
+        //"color": "#36a64f",
+        "title": "See Report",
+        "title_link": format( '%s/services/%s/view', process.env.WATCHMEN_BASE_URL, service.id ),
+        "footer": service.url,
+        "ts": _.now()
+      });
+
     }
 
     var options = {
-      text: text.join( '' )
+      text: text.join( "\n" ),
     };
+
+    if( attachments ) {
+      options.attachments = attachments;
+    }
+
+    // console.log( require( 'util' ).inspect( merge(defaultOptions, options), { showHidden: false, depth: 2, colors: true } ) );
 
     slack.send(merge(defaultOptions, options));
   };
