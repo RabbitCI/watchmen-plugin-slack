@@ -1,6 +1,7 @@
 /*jslint node: true */
 'use strict';
 
+var format = require('util').format;
 var merge = require('merge');
 var Slack = require('node-slack');
 require('dotenv').load({ silent: true });
@@ -12,6 +13,7 @@ var defaultOptions = {
   icon_emoji: ':mega:'
 };
 
+console.log( 'process.env.WATCHMEN_SLACK_NOTIFICATION_EVENTS', process.env.WATCHMEN_SLACK_NOTIFICATION_EVENTS );
 var notifications = process.env.WATCHMEN_SLACK_NOTIFICATION_EVENTS.split(' ');
 console.log('Slack notifications are turned on for:');
 console.log(notifications);
@@ -43,9 +45,14 @@ function handleEvent(eventName) {
       'service-ok':      'Service OK'
     };
 
-    var text    = '[' + friendlyNames[eventName] + '] on ' + service.name + ' ' + service.url;
+    var text    = ['[' + friendlyNames[eventName] + '] on ' + service.name + ' ' + service.url + ''];
+
+    if( [ 'new-outage', 'service-error', 'latency-warning' ].indexOf( eventName ) !== -1 ) {
+      text.push( format( 'See report [%s/services/%s/view].', process.env.WATCHMEN_BASE_URL, service.id ) );
+    }
+
     var options = {
-      text: text
+      text: text.join( '' )
     };
 
     slack.send(merge(defaultOptions, options));
