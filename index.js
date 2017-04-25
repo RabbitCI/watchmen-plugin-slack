@@ -44,6 +44,9 @@ if ('WATCHMEN_SLACK_NOTIFICATION_ICON_EMOJI' in process.env) {
 
 function handleEvent(eventName) {
   return function(service, data) {
+
+    //console.log( 'slack handleevent response.headers', require( 'util' ).inspect( _.get( data, 'response.headers' ), { showHidden: false, depth: 2, colors: true } ) );
+
     if (notifications.indexOf(eventName) === -1) {
       return;
     }
@@ -85,7 +88,11 @@ function handleEvent(eventName) {
 
     // console.log( require( 'util' ).inspect( merge(defaultOptions, options), { showHidden: false, depth: 2, colors: true } ) );
 
-    slack.send(merge(defaultOptions, options));
+    var _send = merge(defaultOptions, options);
+
+    //console.log( '_send', require( 'util' ).inspect( _send, { showHidden: false, depth: 2, colors: true } ) );
+    //return;
+    slack.send(_send);
   };
 }
 
